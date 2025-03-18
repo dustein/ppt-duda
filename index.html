@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload de Vídeo para AWS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload de Vídeo</h1>
+    <div class="form-group">
+        <label for="videoFile">Selecione um vídeo:</label>
+        <input type="file" id="videoFile" accept="video/*">
+    </div>
+    <button id="uploadButton">Enviar Vídeo</button>
+    <div id="status"></div>
+
+    <script>
+        document.getElementById('uploadButton').addEventListener('click', async () => {
+            const fileInput = document.getElementById('videoFile');
+            const statusDiv = document.getElementById('status');
+            
+            if (!fileInput.files.length) {
+                statusDiv.textContent = 'Por favor, selecione um vídeo.';
+                statusDiv.className = 'error';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            statusDiv.textContent = 'Enviando vídeo...';
+            statusDiv.className = '';
+            
+            try {
+                // Solicitar URL assinada para upload
+                const response = await fetch('https://sua-api-gateway-url/get-upload-url', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        fileType: file.type
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Falha ao obter URL para upload');
+                }
+                
+                const { uploadURL } = await response.json();
+                
+                // Fazer upload direto para o S3
+                const uploadResponse = await fetch(uploadURL, {
+                    method: 'PUT',
+                    body: file,
+                    headers: {
+                        'Content-Type': file.type
+                    }
+                });
+                
+                if (!uploadResponse.ok) {
+                    throw new Error('Falha ao fazer upload do vídeo');
+                }
+                
+                statusDiv.textContent = 'Vídeo enviado com sucesso!';
+                statusDiv.className = 'success';
+            } catch (error) {
+                console.error('Erro:', error);
+                statusDiv.textContent = `Erro no upload: ${error.message}`;
+                statusDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>
